@@ -11,7 +11,7 @@ import java.io.IOException;
 import java.util.List;
 
 @RestController
-@RequestMapping("/image")
+@RequestMapping("api/images")
 public class ImageController {
     @Autowired
     private StorageService service;
@@ -23,18 +23,16 @@ public class ImageController {
     }
 
     @PostMapping("/upload")
-    public ResponseEntity<?> uploadImage(@RequestParam("image") MultipartFile file) throws IOException {
-        String uploadImage = service.uploadImage(file);
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(uploadImage);
+    public ResponseEntity<Long> uploadImage(@RequestParam("image") MultipartFile file) throws IOException {
+        Long imageId = service.uploadImage(file); // Lưu hình ảnh và lấy ID
+        return ResponseEntity.status(HttpStatus.OK).body(imageId); // Trả về ID của hình ảnh
     }
 
-    @GetMapping("/{fileName}")
-    public ResponseEntity<?> downloadImage(@PathVariable String fileName){
-        byte[] imageData=service.downloadImage(fileName);
+    @GetMapping("/{id}")
+    public ResponseEntity<byte[]> downloadImage(@PathVariable Long id) {
+        byte[] imageData = service.downloadImage(id); // Tải hình ảnh theo ID
         return ResponseEntity.status(HttpStatus.OK)
                 .contentType(MediaType.valueOf("image/png"))
                 .body(imageData);
-
     }
 }

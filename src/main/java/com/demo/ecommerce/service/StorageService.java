@@ -16,21 +16,21 @@ public class StorageService {
     @Autowired
     private StorageRepository repository;
 
-    public String uploadImage(MultipartFile file) throws IOException {
-
+    // Upload an image and return its ID
+    public Long uploadImage(MultipartFile file) throws IOException {
         ImageData imageData = repository.save(ImageData.builder()
                 .name(file.getOriginalFilename())
                 .type(file.getContentType())
                 .imageData(ImageUtils.compressImage(file.getBytes())).build());
-        if (imageData != null) {
-            return "file uploaded successfully : " + file.getOriginalFilename();
-        }
-        return null;
+        return imageData.getId(); // Trả về ID của hình ảnh đã lưu
     }
 
-    public byte[] downloadImage(String fileName){
-        Optional<ImageData> dbImageData = repository.findByName(fileName);
-        byte[] images=ImageUtils.decompressImage(dbImageData.get().getImageData());
-        return images;
+    // Download an image by ID
+    public byte[] downloadImage(Long id) {
+        Optional<ImageData> dbImageData = repository.findById(id); // Tìm hình ảnh theo ID
+        if (dbImageData.isPresent()) {
+            return ImageUtils.decompressImage(dbImageData.get().getImageData());
+        }
+        return null; // Hoặc bạn có thể xử lý ngoại lệ nếu hình ảnh không tồn tại
     }
 }
