@@ -1,19 +1,16 @@
-﻿# Base image được sử dụng để build image
-FROM --platform=amd64 openjdk:17.0.2-oraclelinux8
-
-LABEL authors="minhphan"
-
-# Set working directory trong container
+﻿FROM maven:3.9.4-eclipse-temurin-17 AS build
 WORKDIR /app
 
-COPY .mvn/ .mvn
-COPY mvnw pom.xml ./
-RUN ./mvnw dependency:go-offline
- 
+COPY pom.xml .
 COPY src ./src
 
-# Expose port của ứng dụng
+RUN mvn clean package -DskipTests
+
+FROM openjdk:17-jdk-slim
+WORKDIR /app
+
+COPY --from=build /app/target/*.jar app.jar
+
 EXPOSE 8080
 
-# Chỉ định command để chạy ứng dụng khi container khởi chạy
-CMD ["./mvnw", "spring-boot:run"]
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]
