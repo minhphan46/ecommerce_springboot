@@ -1,8 +1,10 @@
 package com.demo.ecommerce.controller;
+
 import com.demo.ecommerce.data.enums.DataSourceType;
-import com.demo.ecommerce.entity.Product;
 import com.demo.ecommerce.service.StorageReadService;
 import com.demo.ecommerce.service.StorageService;
+import com.demo.ecommerce.util.ApiResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -11,7 +13,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.List;
 
 @RestController
 @RequestMapping("api/images")
@@ -24,12 +25,31 @@ public class ImageController {
 
     // Test
     @GetMapping("/")
-    public String test(){
+    public String test() {
         return "test upload image";
     }
 
+    // Helper method to get host information
+    private String getHostName() {
+        return System.getenv("HOSTNAME");
+    }
+
+    private String getIpAddress(HttpServletRequest request) {
+        String ipAddress = request.getHeader("X-Forwarded-For");
+        if (ipAddress == null || ipAddress.isEmpty()) {
+            ipAddress = request.getRemoteAddr();  // Lấy IP thực từ request
+        }
+        return ipAddress;
+    }
+
     @PostMapping("/upload")
-    public ResponseEntity<Long> uploadImage(@RequestParam("image") MultipartFile file, @RequestParam String type) throws IOException {
+    public ResponseEntity<ApiResponse<Long>> uploadImage(
+            @RequestParam("image") MultipartFile file,
+            @RequestParam String type,
+            HttpServletRequest request) throws IOException {
+        String hostname = getHostName();
+        String ipAddress = getIpAddress(request);
+
         try {
             Long imageId;
             DataSourceType dataSourceType = DataSourceType.SLAVE;
@@ -38,9 +58,10 @@ public class ImageController {
             } else {
                 imageId = service.uploadImage(file);
             }
-            return ResponseEntity.status(HttpStatus.OK).body(imageId);
+            return ResponseEntity.ok(new ApiResponse<>("success", "Image uploaded successfully", hostname, ipAddress, imageId));
         } catch (Exception e) {
-            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>("error", "An error occurred: " + e.getMessage(), hostname, ipAddress, null));
         }
     }
 

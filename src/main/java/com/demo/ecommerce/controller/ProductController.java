@@ -4,10 +4,13 @@ import com.demo.ecommerce.data.enums.DataSourceType;
 import com.demo.ecommerce.entity.Product;
 import com.demo.ecommerce.service.ProductReadService;
 import com.demo.ecommerce.service.ProductService;
+import com.demo.ecommerce.util.ApiResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpStatus;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -22,29 +25,48 @@ public class ProductController {
     @Autowired
     private ProductReadService productReadService;
 
+    private String getHostName() {
+        return System.getenv("HOSTNAME");
+    }
+
+    private String getIpAddress(HttpServletRequest request) {
+        String ipAddress = request.getHeader("X-Forwarded-For");
+        if (ipAddress == null || ipAddress.isEmpty()) {
+            ipAddress = request.getRemoteAddr();  // Lấy IP thực từ request
+        }
+        return ipAddress;
+    }
+
     // Get all products
     @GetMapping
-    public ResponseEntity<List<Product>> getAllProducts(@RequestParam String type) {
+    public ResponseEntity<ApiResponse<List<Product>>> getAllProducts(HttpServletRequest request, @RequestParam String type) {
+        String hostname = getHostName();
+        String ipAddress = getIpAddress(request);
         try {
-            List<Product> products = new ArrayList<Product>();
+            List<Product> products = new ArrayList<>();
             DataSourceType dataSourceType = DataSourceType.SLAVE;
             if (dataSourceType.getType().equals(type)) {
                 products.addAll(productReadService.findAll());
             } else {
                 products.addAll(productService.findAll());
             }
+
             if (products.isEmpty()) {
-                return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+                return ResponseEntity.ok(new ApiResponse<>("success", "No products found", hostname, ipAddress, null));
             }
-            return new ResponseEntity<>(products, HttpStatus.OK);
+
+            return ResponseEntity.ok(new ApiResponse<>("success", "Products retrieved successfully", hostname, ipAddress, products));
         } catch (Exception e) {
-            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>("error", "An error occurred: " + e.getMessage(), hostname, ipAddress, null));
         }
     }
 
     // Get a product by ID
     @GetMapping("/{id}")
-    public ResponseEntity<Product> getProductById(@PathVariable Long id, @RequestParam String type) {
+    public ResponseEntity<ApiResponse<Product>> getProductById(@PathVariable Long id, @RequestParam String type, HttpServletRequest request) {
+        String hostname = getHostName();
+        String ipAddress = getIpAddress(request);
         try {
             Optional<Product> product;
             DataSourceType dataSourceType = DataSourceType.SLAVE;
@@ -53,16 +75,21 @@ public class ProductController {
             } else {
                 product = productService.getProductById(id);
             }
-            return product.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+            return product.map(p -> ResponseEntity.ok(new ApiResponse<>("success", "Product retrieved successfully", hostname, ipAddress, p)))
+                    .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                            .body(new ApiResponse<>("error", "Product not found", hostname, ipAddress, null)));
         } catch (Exception e) {
-            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>("error", "An error occurred: " + e.getMessage(), hostname, ipAddress, null));
         }
     }
 
     // Create a new product
     @PostMapping
-    public ResponseEntity<Product> createProduct(@RequestBody Product product,
-                                                 @RequestParam String type) {
+    public ResponseEntity<ApiResponse<Product>> createProduct(@RequestBody Product product,
+                                                              @RequestParam String type, HttpServletRequest request) {
+        String hostname = getHostName();
+        String ipAddress = getIpAddress(request);
         try {
             Product savedProduct;
             DataSourceType dataSourceType = DataSourceType.SLAVE;
@@ -71,15 +98,19 @@ public class ProductController {
             } else {
                 savedProduct = productService.saveProduct(product);
             }
-            return new ResponseEntity<>(savedProduct, HttpStatus.CREATED);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(new ApiResponse<>("success", "Product created successfully", hostname, ipAddress, savedProduct));
         } catch (Exception e) {
-            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>("error", "An error occurred: " + e.getMessage(), hostname, ipAddress, null));
         }
     }
 
     // Update a product by ID
     @PutMapping("/{id}")
-    public ResponseEntity<Product> updateProduct(@PathVariable Long id, @RequestBody Product productDetails, @RequestParam String type) {
+    public ResponseEntity<ApiResponse<Product>> updateProduct(@PathVariable Long id, @RequestBody Product productDetails, @RequestParam String type, HttpServletRequest request) {
+        String hostname = getHostName();
+        String ipAddress = getIpAddress(request);
         try {
             Product updatedProduct;
             DataSourceType dataSourceType = DataSourceType.SLAVE;
@@ -88,15 +119,18 @@ public class ProductController {
             } else {
                 updatedProduct = productService.updateProduct(id, productDetails);
             }
-            return ResponseEntity.ok(updatedProduct);
+            return ResponseEntity.ok(new ApiResponse<>("success", "Product updated successfully", hostname, ipAddress, updatedProduct));
         } catch (Exception e) {
-            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>("error", "An error occurred: " + e.getMessage(), hostname, ipAddress, null));
         }
     }
 
     // Delete a product by ID
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteProduct(@PathVariable Long id, @RequestParam String type) {
+    public ResponseEntity<ApiResponse<Void>> deleteProduct(@PathVariable Long id, @RequestParam String type, HttpServletRequest request) {
+        String hostname = getHostName();
+        String ipAddress = getIpAddress(request);
         try {
             DataSourceType dataSourceType = DataSourceType.SLAVE;
             if (dataSourceType.getType().equals(type)) {
@@ -106,7 +140,8 @@ public class ProductController {
             }
             return ResponseEntity.noContent().build();
         } catch (Exception e) {
-            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>("error", "An error occurred: " + e.getMessage(), hostname, ipAddress, null));
         }
     }
 }
