@@ -15,6 +15,15 @@ services:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       timeout: 20s
       retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"       # Giới hạn tối đa 50% CPU
+          memory: "512M"     # Giới hạn tối đa 512MB RAM
+        reservations:
+          cpus: "0.2"       # Đảm bảo 20% CPU có sẵn cho container
+          memory: "256M"     # Đảm bảo ít nhất 256MB RAM có sẵn
+
 
   mysql-slave:
     image: mysql:latest
@@ -30,6 +39,15 @@ services:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       timeout: 20s
       retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"       # Giới hạn tối đa 50% CPU
+          memory: "512M"     # Giới hạn tối đa 512MB RAM
+        reservations:
+          cpus: "0.2"       # Đảm bảo 20% CPU có sẵn cho container
+          memory: "256M"     # Đảm bảo ít nhất 256MB RAM có sẵn
+
 
   spring-app:
     build:
@@ -47,10 +65,17 @@ services:
     deploy:
       mode: replicated
       replicas: 3
+      resources:
+        limits:
+          cpus: "1.0"       # Giới hạn 100% CPU
+          memory: "1G"       # Giới hạn 1GB RAM
+        reservations:
+          cpus: "0.5"       # Đảm bảo 50% CPU có sẵn
+          memory: "512M"     # Đảm bảo ít nhất 512MB RAM có sẵn
     networks:
       - app-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8080" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -60,11 +85,19 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
     ports:
-      - "80:80"
+      - "80:80"  # Cổng chính mà Nginx sẽ nghe
     depends_on:
       - spring-app
     networks:
       - app-network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.2"       # Giới hạn 20% CPU
+          memory: "128M"     # Giới hạn 128MB RAM
+        reservations:
+          cpus: "0.1"       # Đảm bảo 10% CPU có sẵn
+          memory: "64M"      # Đảm bảo ít nhất 64MB RAM có sẵn
 
 networks:
   app-network:
