@@ -1,4 +1,7 @@
 package com.demo.ecommerce.controller;
+import com.demo.ecommerce.data.enums.DataSourceType;
+import com.demo.ecommerce.entity.Product;
+import com.demo.ecommerce.service.StorageReadService;
 import com.demo.ecommerce.service.StorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -16,6 +19,9 @@ public class ImageController {
     @Autowired
     private StorageService service;
 
+    @Autowired
+    private StorageReadService readService;
+
     // Test
     @GetMapping("/")
     public String test(){
@@ -23,16 +29,36 @@ public class ImageController {
     }
 
     @PostMapping("/upload")
-    public ResponseEntity<Long> uploadImage(@RequestParam("image") MultipartFile file) throws IOException {
-        Long imageId = service.uploadImage(file); // Lưu hình ảnh và lấy ID
-        return ResponseEntity.status(HttpStatus.OK).body(imageId); // Trả về ID của hình ảnh
+    public ResponseEntity<Long> uploadImage(@RequestParam("image") MultipartFile file, @RequestParam String type) throws IOException {
+        try {
+            Long imageId;
+            DataSourceType dataSourceType = DataSourceType.SLAVE;
+            if (dataSourceType.getType().equals(type)) {
+                imageId = readService.uploadImage(file);
+            } else {
+                imageId = service.uploadImage(file);
+            }
+            return ResponseEntity.status(HttpStatus.OK).body(imageId);
+        } catch (Exception e) {
+            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<byte[]> downloadImage(@PathVariable Long id) {
-        byte[] imageData = service.downloadImage(id); // Tải hình ảnh theo ID
-        return ResponseEntity.status(HttpStatus.OK)
-                .contentType(MediaType.valueOf("image/png"))
-                .body(imageData);
+    public ResponseEntity<byte[]> downloadImage(@PathVariable Long id, @RequestParam String type) {
+        try {
+            byte[] imageData;
+            DataSourceType dataSourceType = DataSourceType.SLAVE;
+            if (dataSourceType.getType().equals(type)) {
+                imageData = readService.downloadImage(id);
+            } else {
+                imageData = service.downloadImage(id);
+            }
+            return ResponseEntity.status(HttpStatus.OK)
+                    .contentType(MediaType.valueOf("image/png"))
+                    .body(imageData);
+        } catch (Exception e) {
+            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 }

@@ -1,13 +1,29 @@
 ﻿version: '3'
 
 services:
-  mysql:
+  mysql-master:
     image: mysql:latest
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: 123
+      MYSQL_DATABASE: masterDb
     ports:
       - "3306:3306"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  mysql-slave:
+    image: mysql:latest
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 123
+      MYSQL_DATABASE: slaveDb
+    ports:
+      - "3307:3306"
     networks:
       - app-network
     healthcheck:
@@ -20,10 +36,12 @@ services:
       context: .
       dockerfile: Dockerfile
     depends_on:
-      - mysql
+      - mysql-master
+      - mysql-slave
     restart: always
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/db-example?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_MASTER_URL=jdbc:mysql://mysql-master:3306/masterDb?createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_SLAVE_URL=jdbc:mysql://mysql-slave:3306/slaveDb?createDatabaseIfNotExist=true
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=123
     deploy:
@@ -42,7 +60,7 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
     ports:
-      - "80:80"  # Cổng chính mà Nginx sẽ nghe
+      - "80:80"
     depends_on:
       - spring-app
     networks:
