@@ -4,6 +4,8 @@ import com.demo.ecommerce.respository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -32,6 +34,10 @@ public class ProductService {
     // find All
     public List<Product> findAll() {
         return new ArrayList<Product>(productRepository.findAll());
+    }
+
+    public Page<Product> findAll(Pageable pageable) {
+        return productRepository.findAll(pageable);
     }
 
     // Update an existing product

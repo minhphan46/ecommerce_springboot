@@ -7,6 +7,9 @@ import com.demo.ecommerce.service.ProductService;
 import com.demo.ecommerce.util.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpStatus;
@@ -39,23 +42,28 @@ public class ProductController {
 
     // Get all products
     @GetMapping
-    public ResponseEntity<ApiResponse<List<Product>>> getAllProducts(HttpServletRequest request, @RequestParam String type) {
+    public ResponseEntity<ApiResponse<Page<Product>>> getAllProducts(
+            HttpServletRequest request, 
+            @RequestParam String type,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
         String hostname = getHostName();
         String ipAddress = getIpAddress(request);
         try {
-            List<Product> products = new ArrayList<>();
+            Pageable pageable = PageRequest.of(page, size);
+            Page<Product> productsPage;
             DataSourceType dataSourceType = DataSourceType.SLAVE;
             if (dataSourceType.getType().equals(type)) {
-                products.addAll(productReadService.findAll());
+                productsPage = productReadService.findAll(pageable);
             } else {
-                products.addAll(productService.findAll());
+                productsPage = productService.findAll(pageable);
             }
 
-            if (products.isEmpty()) {
+            if (productsPage.isEmpty()) {
                 return ResponseEntity.ok(new ApiResponse<>("success", "No products found", hostname, ipAddress, null));
             }
 
-            return ResponseEntity.ok(new ApiResponse<>("success", "Products retrieved successfully", hostname, ipAddress, products));
+            return ResponseEntity.ok(new ApiResponse<>("success", "Products retrieved successfully", hostname, ipAddress, productsPage));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse<>("error", "An error occurred: " + e.getMessage(), hostname, ipAddress, null));
