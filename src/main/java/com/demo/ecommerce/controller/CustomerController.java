@@ -1,8 +1,7 @@
 package com.demo.ecommerce.controller;
-
 import com.demo.ecommerce.data.enums.DataSourceType;
 import com.demo.ecommerce.entity.Customer;
-import com.demo.ecommerce.entity.Product;
+import com.demo.ecommerce.service.CustomerReadService;
 import com.demo.ecommerce.service.CustomerService;
 import com.demo.ecommerce.util.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,6 +21,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class CustomerController {
     @Autowired
     private CustomerService customerService;
+    
+    @Autowired
+    private CustomerReadService customerReadService;
 
     private String getHostName() {
         return System.getenv("HOSTNAME");
@@ -39,6 +41,7 @@ public class CustomerController {
     @GetMapping
     public ResponseEntity<ApiResponse<Page<Customer>>> getAllCustomers(
             HttpServletRequest request,
+            @RequestParam String type,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         String hostname = getHostName();
@@ -46,9 +49,14 @@ public class CustomerController {
         try {
             Pageable pageable = PageRequest.of(page, size);
             Page<Customer> customerPage;
-            
-            customerPage = customerService.findAll(pageable);
 
+            DataSourceType dataSourceType = DataSourceType.SLAVE;
+            if (dataSourceType.getType().equals(type)) {
+                customerPage = customerReadService.findAll(pageable);
+            } else {
+                customerPage = customerService.findAll(pageable);
+            }
+            
             if (customerPage.isEmpty()) {
                 return ResponseEntity.ok(new ApiResponse<>("success", "No customers found", hostname, ipAddress, null));
             }
